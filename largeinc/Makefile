@@ -181,25 +181,21 @@ define INCLUDE_SUBMAKEFILE
     # used to keep track of which target is the "current" target as we
     # recursively include other submakefiles.
     ifneq "$$(strip $${TARGET})" ""
-        # This makefile defined a new target. Target variables defined by this
-        # makefile apply to this new target. Initialize the target's variables.
-        TGT := $$(strip $${TARGET})
-        ALL_TGTS += $${TGT}
-        $${TGT}_CFLAGS    := $${TGT_CFLAGS}
-        $${TGT}_CXXFLAGS  := $${TGT_CXXFLAGS}
-        $${TGT}_DEFS      := $${TGT_DEFS}
-        $${TGT}_DEPS      :=
-        TGT_INCDIRS       := $$(call QUALIFY_PATH,$${DIR},$${TGT_INCDIRS})
-        TGT_INCDIRS       := $$(call CANONICAL_PATH,$${TGT_INCDIRS})
-        $${TGT}_INCDIRS   := $${TGT_INCDIRS}
-        $${TGT}_LDFLAGS   := $${TGT_LDFLAGS}
-        $${TGT}_LDLIBS    := $${TGT_LDLIBS}
-        $${TGT}_LINKER    := $${TGT_LINKER}
-        $${TGT}_OBJS      :=
-        $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
-        $${TGT}_POSTMAKE  := $${TGT_POSTMAKE}
-        $${TGT}_PREREQS   := $$(addprefix $${TARGET_DIR}/,$${TGT_PREREQS})
-        $${TGT}_SOURCES   :=
+    
+        # The special target below can be used to indicate that each of the
+        # supplied sources should be compiled as an executable
+        ifneq "$$(strip $${TARGET})" "EXECUTABLE_PER_SOURCE"
+            # This makefile defined a new target. Target variables defined by this
+            # makefile apply to this new target. Initialize the target's variables.
+            $$(eval $$(call INIT_TGT,$${TARGET}))
+        else
+            # This is a special variant makfile where each source is
+            # assumed to be a lone object for an executable.
+            # Init targets for each source file.
+            $$(foreach TGT,$$(basename $${SOURCES}),\
+               $$(eval $$(call INIT_TGT,$${TGT})))
+        endif
+        
     else
         # The values defined by this makefile apply to the the "current" target
         # as determined by which target is at the top of the stack.
@@ -220,40 +216,13 @@ define INCLUDE_SUBMAKEFILE
     # Push the current target onto the target stack.
     TGT_STACK := $$(call PUSH,$${TGT_STACK},$${TGT})
 
-    ifneq "$$(strip $${SOURCES})" ""
-        # This makefile builds one or more objects from source. Validate the
-        # specified sources against the supported source file types.
-        BAD_SRCS := $$(strip $$(filter-out $${ALL_SRC_EXTS},$${SOURCES}))
-        ifneq "$${BAD_SRCS}" ""
-            $$(error Unsupported source file(s) found in ${1} [$${BAD_SRCS}])
-        endif
-
-        # Qualify and canonicalize paths.
-        SOURCES     := $$(call QUALIFY_PATH,$${DIR},$${SOURCES})
-        SOURCES     := $$(call CANONICAL_PATH,$${SOURCES})
-        SRC_INCDIRS := $$(call QUALIFY_PATH,$${DIR},$${SRC_INCDIRS})
-        SRC_INCDIRS := $$(call CANONICAL_PATH,$${SRC_INCDIRS})
-
-        # Save the list of source files for this target.
-        $${TGT}_SOURCES += $${SOURCES}
-
-        # Convert the source file names to their corresponding object file
-        # names.
-        OBJS := $$(addprefix $${BUILD_DIR}/$$(call CANONICAL_PATH,$${TGT})/,\
-                   $$(addsuffix .o,$$(basename $${SOURCES})))
-
-        # Add the objects to the current target's list of objects, and create
-        # target-specific variables for the objects based on any source
-        # variables that were defined.
-        $${TGT}_OBJS += $${OBJS}
-        $${TGT}_DEPS += $${OBJS:%.o=%.P}
-        $${OBJS}: SRC_CFLAGS   := $${$${TGT}_CFLAGS} $${SRC_CFLAGS}
-        $${OBJS}: SRC_CXXFLAGS := $${$${TGT}_CXXFLAGS} $${SRC_CXXFLAGS}
-        $${OBJS}: SRC_DEFS     := $$(addprefix -D,$${$${TGT}_DEFS} $${SRC_DEFS})
-        $${OBJS}: SRC_INCDIRS  := $$(addprefix -I,\
-                                     $${$${TGT}_INCDIRS} $${SRC_INCDIRS})
+    ifneq "$$(strip $${TARGET})" "EXECUTABLE_PER_SOURCE"
+        $$(eval $$(call PREP_SOURCES,$${SOURCES},$${TGT}))
+    else
+        $$(foreach SRC,$${SOURCES},\
+            $$(eval $$(call PREP_SOURCES,$${SRC},$$(basename $${SRC}))))
     endif
-
+    
     ifneq "$$(strip $${SUBMAKEFILES})" ""
         # This makefile has submakefiles. Recursively include them.
         $$(foreach MK,$${SUBMAKEFILES},\
@@ -269,6 +238,76 @@ define INCLUDE_SUBMAKEFILE
     # Reset the "current" directory to it's previous value.
     DIR_STACK := $$(call POP,$${DIR_STACK})
     DIR := $$(call PEEK,$${DIR_STACK})
+endef
+
+# INIT_TGT - This was isolated from INCLUDE_SUBMAKEFILE so it could be
+#   called for individual source file in the case where EXECUTABLE_PER_SOURCE
+#   is used at the target.
+#
+#   USE WITH EVAL
+#
+define INIT_TGT
+            TGT := $$(strip ${1})
+            ALL_TGTS += $${TGT}
+            $${TGT}_CFLAGS    := $${TGT_CFLAGS}
+            $${TGT}_CXXFLAGS  := $${TGT_CXXFLAGS}
+            $${TGT}_DEFS      := $${TGT_DEFS}
+            $${TGT}_DEPS      :=
+            TGT_INCDIRS       := $$(call QUALIFY_PATH,$${DIR},$${TGT_INCDIRS})
+            TGT_INCDIRS       := $$(call CANONICAL_PATH,$${TGT_INCDIRS})
+            $${TGT}_INCDIRS   := $${TGT_INCDIRS}
+            $${TGT}_LDFLAGS   := $${TGT_LDFLAGS}
+            $${TGT}_LDLIBS    := $${TGT_LDLIBS}
+            $${TGT}_LINKER    := $${TGT_LINKER}
+            $${TGT}_OBJS      :=
+            $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
+            $${TGT}_POSTMAKE  := $${TGT_POSTMAKE}
+            $${TGT}_PREREQS   := $$(addprefix $${TARGET_DIR}/,$${TGT_PREREQS})
+            $${TGT}_SOURCES   :=
+endef
+
+# PREP_SOURCES - This was isolated from INCLUDE_SUBMAKEFILE so it could be
+#   called for individual source file in the case where EXECUTABLE_PER_SOURCE
+#   is used at the target.
+#
+#   USE WITH EVAL
+#
+define PREP_SOURCES
+    LOCALSOURCES = ${1}
+    TGT = ${2}
+    ifneq "$$(strip $${LOCALSOURCES})" ""
+        # This makefile builds one or more objects from source. Validate the
+        # specified sources against the supported source file types.
+        BAD_SRCS := $$(strip $$(filter-out $${ALL_SRC_EXTS},$${LOCALSOURCES}))
+        ifneq "$${BAD_SRCS}" ""
+            $$(error Unsupported source file(s) found in ${1} [$${BAD_SRCS}])
+        endif
+
+        # Qualify and canonicalize paths.
+        LOCALSOURCES     := $$(call QUALIFY_PATH,$${DIR},$${LOCALSOURCES})
+        LOCALSOURCES     := $$(call CANONICAL_PATH,$${LOCALSOURCES})
+        SRC_INCDIRS := $$(call QUALIFY_PATH,$${DIR},$${SRC_INCDIRS})
+        SRC_INCDIRS := $$(call CANONICAL_PATH,$${SRC_INCDIRS})
+
+        # Save the list of source files for this target.
+        $${TGT}_SOURCES += $${LOCALSOURCES}
+
+        # Convert the source file names to their corresponding object file
+        # names.
+        OBJS := $$(addprefix $${BUILD_DIR}/$$(call CANONICAL_PATH,$${TGT})/,\
+                   $$(addsuffix .o,$$(basename $${LOCALSOURCES})))
+
+        # Add the objects to the current target's list of objects, and create
+        # target-specific variables for the objects based on any source
+        # variables that were defined.
+        $${TGT}_OBJS += $${OBJS}
+        $${TGT}_DEPS += $${OBJS:%.o=%.P}
+        $${OBJS}: SRC_CFLAGS   := $${$${TGT}_CFLAGS} $${SRC_CFLAGS}
+        $${OBJS}: SRC_CXXFLAGS := $${$${TGT}_CXXFLAGS} $${SRC_CXXFLAGS}
+        $${OBJS}: SRC_DEFS     := $$(addprefix -D,$${$${TGT}_DEFS} $${SRC_DEFS})
+        $${OBJS}: SRC_INCDIRS  := $$(addprefix -I,\
+                                     $${$${TGT}_INCDIRS} $${SRC_INCDIRS})
+    endif
 endef
 
 # MIN - Parameterized "function" that results in the minimum lexical value of
@@ -369,6 +408,10 @@ $(foreach TGT,${ALL_TGTS},\
 .PHONY: clean
 $(foreach TGT,${ALL_TGTS},\
   $(eval $(call ADD_CLEAN_RULE,${TGT})))
+
+# Add "distclean" rule to do a more exhaustive clean
+distclean: clean
+	rm -rf ${BUILD_DIR} ${TARGET_DIR}
 
 # Include generated rules that define additional (header) dependencies.
 $(foreach TGT,${ALL_TGTS},\
