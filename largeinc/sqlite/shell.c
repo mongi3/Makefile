@@ -12,6 +12,8 @@
 ** This file contains code to implement the "sqlite" command line
 ** utility for accessing SQLite databases.
 */
+#include "sqlite3impl.h"
+
 #if (defined(_WIN32) || defined(WIN32)) && !defined(_CRT_SECURE_NO_WARNINGS)
 /* This needs to come before any includes for MSVC compiler */
 #define _CRT_SECURE_NO_WARNINGS
@@ -677,8 +679,9 @@ static const char *modeDescr[] = {
 /*
 ** Number of elements in an array
 */
+#ifndef ArraySize
 #define ArraySize(X)  (int)(sizeof(X)/sizeof(X[0]))
-
+#endif
 /*
 ** A callback for the sqlite3_log() interface.
 */
