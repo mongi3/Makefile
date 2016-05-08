@@ -1,9 +1,10 @@
-CXXFLAGS := -g -O0 -Wall -pipe
+#TARGET_DIR := bin
 
-#SUBMAKEFILES := sqlite/main.mk sqlite/main2.mk sqlite/main3.mk sqlite/main4.mk sqlite/main5.mk
-SUBMAKEFILES := sqlite/main.mk sqlite/main2.mk
+#DEFS := HEADER_IMPLEMENT
+#SUBMAKEFILES := sqlite/main.mk sqlite/main2.mk sqlite/lib.mk
 
-DEFS := HEADER_IMPLEMENT
+#SUBMAKEFILES := sqlite/mainlib.mk sqlite/main2.mk sqlite/lib.mk
+SUBMAKEFILES := sqlite/mainlib.mk sqlite/lib.mk
 
-TARGET_DIR := bin
+
 
