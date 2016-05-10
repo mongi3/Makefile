@@ -25,11 +25,15 @@ TARGET_DIR = ${BUILD}
 
 #TODO: add in fancy color stuff "instead of raw make outputs"
 #TODO: make verbosity settings?
+# By default verbose is not defined and .SILENT is effective.
+# If verbose defined to anything, then .SILENT goes away and all
+# prints are observed.
+${VERBOSE}.SILENT:
 
 # Contains bulk of generic non-recursive make structure
 include boiler.mk
 .PHONEY: pre normal post myclean
-pre: .depsexpand
+pre: .Makefile.changedetect .depsexpand
 
 normal: pre
 	@$(MAKE) all --no-print-directory
@@ -60,7 +64,7 @@ distclean: myclean
 	@echo -e $(call color_text, RED, "modified file(s): $?")
 	@echo -e $(call color_text, RED, "...you should probably 'make clean'")
 # add as "all" target
-all: .Makefile.changedetect
+#all: .Makefile.changedetect
 
 .DEFAULT_GOAL := post
 

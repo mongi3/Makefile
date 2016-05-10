@@ -70,6 +70,7 @@ define ADD_TARGET_RULE
         # Add a target for creating a static library.
         $${TARGET_DIR}/${1}: $${${1}_OBJS}
 	    @mkdir -p $$(dir $$@)
+	    @echo -e $(call color_text,LIGHT_CYAN,"Linking $${TARGET_DIR}/${1}")
 	    $$(strip $${AR} $${ARFLAGS} $$@ $${${1}_OBJS})
 	    $${${1}_POSTMAKE}
     else
@@ -91,6 +92,7 @@ define ADD_TARGET_RULE
 
         $${TARGET_DIR}/${1}: $${${1}_OBJS} $${${1}_PREREQS}
 	    @mkdir -p $$(dir $$@)
+	    @echo -e $(call color_text,LIGHT_CYAN,"Linking $${TARGET_DIR}/${1}")
 	    $$(strip $${${1}_LINKER} -o $$@ $${LDFLAGS} $${${1}_LDFLAGS} \
 	        $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS})
 	    $${${1}_POSTMAKE}
@@ -110,6 +112,7 @@ endef
 # COMPILE_C_CMDS - Commands for compiling C source code.
 define COMPILE_C_CMDS
 	@mkdir -p $(dir $@)
+	@echo -e $(call color_text,LIGHT_GREEN,"Building $^")
 	$(strip ${CC} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 	@cp ${@:%$(suffix $@)=%.d} ${@:%$(suffix $@)=%.P}; \
@@ -122,6 +125,7 @@ endef
 # COMPILE_CXX_CMDS - Commands for compiling C++ source code.
 define COMPILE_CXX_CMDS
 	@mkdir -p $(dir $@)
+	@echo -e $(call color_text,LIGHT_GREEN,"Building $^")
 	$(strip ${CXX} -o $@ -c -MD ${CXXFLAGS} ${SRC_CXXFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 	@cp ${@:%$(suffix $@)=%.d} ${@:%$(suffix $@)=%.P}; \
