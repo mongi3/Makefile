@@ -23,13 +23,30 @@ BUILD_DIR = build/${BUILD}
 # Location of final executable products
 TARGET_DIR = ${BUILD}
 
-#TODO: how do different architectures fit into this?
 #TODO: add in fancy color stuff "instead of raw make outputs"
 #TODO: make verbosity settings?
 
 # Contains bulk of generic non-recursive make structure
 include boiler.mk
+.PHONEY: pre normal post myclean
+pre: .depsexpand
 
+normal: pre
+	@$(MAKE) all --no-print-directory
+
+post: normal
+
+.depsexpand: test.tgz
+	echo "shell commands to expand tgz's here"
+#	mkdir -p tmp
+#	tar -zxvf $^ -C tmp
+#	sleep 5
+	touch $@
+myclean:
+	rm -f .depsexpand
+	rm -rf tmp
+
+distclean: myclean
 
 # Add target below to all to notify of makefile changes.
 # This won't cover all cases, but should cover most for those
@@ -37,12 +54,13 @@ include boiler.mk
 .Makefile.changedetect: Makefile $(shell find -name \*.mk)
 #	@echo "checking for makefile changes: $^"
 	@touch $@
-	@echo $(call color_text, RED, "===================================")
-	@echo $(call color_text, RED, " WARNING: MAKEFILE CHANGE DETECTED ")
-	@echo $(call color_text, RED, "===================================")
-	@echo $(call color_text, RED, "modified file(s): $?")
-	@echo $(call color_text, RED, "...you should probably 'make clean'")
+	@echo -e $(call color_text, RED, "===================================")
+	@echo -e $(call color_text, RED, " WARNING: MAKEFILE CHANGE DETECTED ")
+	@echo -e $(call color_text, RED, "===================================")
+	@echo -e $(call color_text, RED, "modified file(s): $?")
+	@echo -e $(call color_text, RED, "...you should probably 'make clean'")
 # add as "all" target
 all: .Makefile.changedetect
 
+.DEFAULT_GOAL := post
 
